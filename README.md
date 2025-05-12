@@ -9,3 +9,9 @@
 ## Java
 - [Wildcard](https://totohoon02.github.io/Java/WildCard)
 
+### Study
+- [Curriculum](https://totohoon02.github.io/Study/Curriculum.md)
+
+<!-- 
+https://totohoon02.github.io/
+-->
