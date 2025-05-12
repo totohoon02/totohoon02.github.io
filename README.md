@@ -10,7 +10,7 @@
 - [Wildcard](https://totohoon02.github.io/Java/WildCard)
 
 ### Study
-- [Curriculum](https://totohoon02.github.io/Study/Curriculum.md)
+- [Curriculum](https://totohoon02.github.io/Study/Curriculum)
 
 <!-- 
 https://totohoon02.github.io/
