@@ -2,12 +2,10 @@
 - Study Wike, Repository Docuemnt.
 
 ## AI
-- [AI Agent](https://github.com/totohoon02/Wiki/blob/main/AI/AI_Agent.md)
-- [ReAct](https://github.com/totohoon02/Wiki/blob/main/AI/ReAct.md)
-- [MCP](https://github.com/totohoon02/Wiki/blob/main/AI/MCP.md)
+- [AI Agent](https://totohoon02.github.io/AI/AI_Agent)
+- [ReAct](https://totohoon02.github.io/AI/ReAct)
+- [MCP](https://totohoon02.github.io/AI/MCP)
 
 ## Java
-- [Wildcard](https://github.com/totohoon02/Wiki/blob/main/Java/WildCard.md)
+- [Wildcard](https://totohoon02.github.io/Java/WildCard)
 
-## Spring
-- [MSA](https://github.com/totohoon02/spring-base/blob/main/msa-board/README.md)
