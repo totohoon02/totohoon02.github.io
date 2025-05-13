@@ -1,6 +1,6 @@
 # Wiki
 
-- Study Wike, Repository Docuemnt.
+- Study Wiki, Repository Document.
 
 ## AI
 
