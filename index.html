@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="ko">
+	<head>
+		<meta charset="UTF-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+		<title>Wiki - totohoon02</title>
+		<style>
+			body {
+				font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+					Oxygen, Ubuntu, Cantarell, sans-serif;
+				max-width: 800px;
+				margin: 0 auto;
+				padding: 20px;
+				line-height: 1.6;
+			}
+			h1,
+			h2 {
+				border-bottom: 1px solid #eaecef;
+				padding-bottom: 0.3em;
+			}
+			a {
+				color: #0366d6;
+				text-decoration: none;
+			}
+			a:hover {
+				text-decoration: underline;
+			}
+			#file-list {
+				margin-top: 20px;
+			}
+			.loading {
+				color: #666;
+				font-style: italic;
+			}
+		</style>
+	</head>
+	<body>
+		<!-- <h1>Wiki</h1>
+		<p>Study Wiki, Repository Document.</p>
+
+		<h2>AI</h2>
+		<ul>
+			<li><a href="https://totohoon02.github.io/AI/AI_Agent">AI Agent</a></li>
+			<li><a href="https://totohoon02.github.io/AI/ReAct">ReAct</a></li>
+			<li><a href="https://totohoon02.github.io/AI/MCP">MCP</a></li>
+		</ul>
+
+		<h2>Java</h2>
+		<ul>
+			<li>
+				<a href="https://totohoon02.github.io/Java/StaticInnerClass"
+					>Static Class vs Inner Class</a
+				>
+			</li>
+			<li><a href="https://totohoon02.github.io/Java/WildCard">Wildcard</a></li>
+		</ul>
+
+		<h2>BE</h2>
+		<ul>
+			<li><a href="https://totohoon02.github.io/BE/Crypt">Encryption</a></li>
+			<li><a href="https://totohoon02.github.io/BE/SSL-TLS">SSL/TLS</a></li>
+		</ul>
+
+		<h2>Study</h2>
+		<ul>
+			<li>
+				<a href="https://totohoon02.github.io/Study/Curriculum">Curriculum</a>
+			</li>
+		</ul> -->
+
+		<h2>Repository Files</h2>
+		<div id="file-list">
+			<p class="loading">Loading repository files...</p>
+		</div>
+
+		<script>
+			async function fetchRepositoryFiles() {
+				try {
+					const response = await fetch(
+						"https://api.github.com/repos/totohoon02/totohoon02.github.io/git/trees/main?recursive=1"
+					);
+					const data = await response.json();
+
+					const fileList = document.getElementById("file-list");
+					if (data.tree) {
+						// 마크다운 파일만 필터링하고 경로별로 그룹화
+						const files = data.tree
+							.filter(
+								(item) => item.type === "blob" && item.path.endsWith(".md")
+							)
+							.map((item) => item.path);
+
+						// 파일들을 경로별로 그룹화
+						const groupedFiles = {};
+						files.forEach((file) => {
+							const [dir, ...rest] = file.split("/");
+							if (!groupedFiles[dir]) {
+								groupedFiles[dir] = [];
+							}
+							if (rest.length > 0) {
+								groupedFiles[dir].push(rest.join("/"));
+							}
+						});
+
+						// HTML 생성
+						const html = Object.entries(groupedFiles)
+							.map(([dir, files]) => {
+								if (files.length === 0) return "";
+								return `
+									<h2>${dir}</h2>
+									<ul>
+										${files
+											.map((file) => {
+												const fileName = file.replace(".md", "");
+												return `<li>
+													<a href="https://totohoon02.github.io/${dir}/${fileName}">
+														${fileName}
+													</a>
+												</li>`;
+											})
+											.join("")}
+									</ul>
+								`;
+							})
+							.join("");
+
+						fileList.innerHTML = html || "<p>No markdown files found.</p>";
+					} else {
+						fileList.innerHTML = "<p>Failed to load repository files.</p>";
+					}
+				} catch (error) {
+					console.error("Error fetching repository files:", error);
+					document.getElementById("file-list").innerHTML =
+						"<p>Error loading repository files.</p>";
+				}
+			}
+
+			// 페이지 로드 시 파일 목록 가져오기
+			fetchRepositoryFiles();
+		</script>
+	</body>
+</html>
