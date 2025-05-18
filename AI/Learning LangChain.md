@@ -4,6 +4,7 @@
 
 <details>
 <summary>Contents</summary>
+<div markdown="1">
 
 ## Algorithm vs ML
 
@@ -91,6 +92,7 @@
 - 많은 LLM앱들이 LLM과 특정한 도구(ex: 계산기)를 연결하여 사용자 입력에 대한 응답을 생성
 - LangChain은 이러한 LLM과 도구를 연결하는 방법을 제공하는 오픈 소스 라이브러리
 
+</div>
 </details>
 
 ## 01. 랭체인 기본 LLM 사용 방법
