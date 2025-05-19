@@ -101,5 +101,185 @@
 <summary>Contents</summary>
 <div markdown="1">
 
+### Requirements
+
+```bash
+pip install langchain-openai langchain-community langchain-text-spliters langchain-postgres python-dotenv
+```
+
+### Example
+
+```python
+# 기본 챗 모델
+import os
+from langchain_openai.llms import OpenAI
+from dotenv import load_dotenv
+
+load_dotenv()
+
+api_key = os.getenv("API_KEY")
+
+model = OpenAI(model="gpt-4o-mini", api_key=api_key)
+
+result = model.invoke("안녕하세요!를 줄루어로 발음은 한글로!")
+print(result)
+
+# 안녕하세요! 줄루어로 "안녕하세요!"는 "사바하!"로 발음합니다. 줄루어로 인사할 때 이렇게 사용하시면 됩니다! 더 궁금한 점이 있으면 말씀해 주세요.
+```
+
+**챗 모델**은 기본 LLM 모델과 달리 전달되는 메시지의 역할 구분 필요하다.
+
+- system: 질문에 답변할 떄의 지시사항
+- user: 사용자의 쿼리
+- assitant: 챗 모델이 생성한 콘텐츠
+
+```python
+import os
+from langchain_openai.chat_models import ChatOpenAI
+from langchain_core.messages import HumanMessage, SystemMessage
+from dotenv import load_dotenv
+
+load_dotenv()
+
+api_key = os.getenv("API_KEY")
+
+model = ChatOpenAI(model="gpt-4o-mini", api_key=api_key)
+prompt = [
+        SystemMessage("답변은 한국어로 하시오"),
+        HumanMessage("Where is captial of Austrailia?")
+    ]
+
+result = model.invoke(prompt)
+print(result)
+```
+
+- SystemMessage를 통해 특정한 답변 스타일을 요구할 수 있다.
+
+프롬프트 템플릿을 이용한 동적 쿼리 작성
+
+```python
+import os
+from langchain_openai.chat_models import ChatOpenAI
+from langchain_core.prompts import PromptTemplate
+
+from dotenv import load_dotenv
+
+load_dotenv()
+
+api_key = os.getenv("API_KEY")
+
+model = ChatOpenAI(model="gpt-4o-mini", api_key=api_key)
+
+context = "그런건 없어"
+question = "하늘을 나는 돼지에 대한 과학적 사실 3가지 알려줘"
+
+template = PromptTemplate.from_template("""
+    사용자의 질문에 대한 답변은 아래의 Context를 참조해 한국어로 할 것.
+    답변이 의심되거나 모를 경우 '모르겠는디' 라고 답변
+    Context: {context}
+    Question: {question}
+""")
+
+
+prompt = template.invoke({
+    "context": context,
+    "question": question
+})
+
+res = model.invoke(prompt)
+print(res) # 모르겠는디
+```
+
+- template.invoke는 템플릿을 만드는 역할.. 이름 비슷하게 해서 헷갈림
+
+JSON 형식의 출력
+
+```python
+import os
+from langchain_openai.chat_models import ChatOpenAI
+from pydantic import BaseModel
+from dotenv import load_dotenv
+
+load_dotenv()
+api_key = os.getenv("API_KEY")
+
+class AnswerWithJSON(BaseModel):
+    '''질문에 대한 답변을 근거와 함께 제시'''
+    answer: str
+    ''' 답변 '''
+    justification: str
+    ''' 근거 '''
+
+model = ChatOpenAI(model="gpt-4o-mini", api_key=api_key)
+json_llm = model.with_structured_output(AnswerWithJSON)
+
+res = json_llm.invoke("달의 중력이 지구의 중력보다 가벼운 이유는 뭐야?")
+print(res.model_dump_json())
+
+"""
+{"answer":"달의 중력이 지구보다 가벼운 이유는 두 가지 주요 요인 때문입니다. 첫째, 달의 질량이 지구에 비해 훨씬 작기 때문입니다. 지구의 질량은 약 5.97 × 10²⁴ kg이지만, 달의 질 량은 약 7.35 × 10²² kg에 불과합니다. 질량이 작으면 중력도 약해지는 원리입니다. 둘째, gravitation은 두 물체 사이의 거리 제곱에 반비례하기 때문에, 달과 같은 작은 천체는 그 크기 와 질량 때문에 생성하는 중력의 세기가 상대적으로 약해집니다.","justification":"중력의 힘은 물체의 질량과 거리와 관련이 있는 만유인력 법칙에 따라 결정됩니다. 따라서 질량이 적은 달은 지구보다 낮은 중력의 영향을 만들어 내고, 이는 달에서의 중량 감소로 이어집니다."}
+"""
+```
+
+출력 파싱
+
+```python
+from langchain_core.output_parsers import CommaSeparatedListOutputParser # CSV
+
+parser = CommaSeparatedListOutputParser()
+items = parser.invoke("a, b, c, d, e")
+print(items)
+# ['a', 'b', 'c', 'd', 'e']
+```
+
+### Runnable 인터페이스
+
+- invoke: 하나의 입력으로 하나의 출력
+- batch: 여러 입력으로 여러 출력
+- stream: 하나의 입력이 생성하는 결과를 실시간 전달
+- 모두 공통 인터페이스를 사용한다.
+- 재시도, 폴백, 스키마 및 런타임 구성
+- 비동기
+
+### 명령형과 선언형 구성
+
+- 명령형
+  - @chain을 활용
+  - 인터페이스 간 전환 시 코드 수정 필요
+- 선언형
+  - LECL을 활용한 연결
+  - 병렬 실행, 스트리밍, 비동기의 처리가 자동화
+
+```python
+import os
+from langchain_openai.chat_models import ChatOpenAI
+from langchain_core.prompts import ChatPromptTemplate
+from dotenv import load_dotenv
+
+load_dotenv()
+api_key = os.getenv("API_KEY")
+
+template = ChatPromptTemplate.from_messages(
+    [
+        ('system', '당신은 불친절한 어시트턴트입니다. 반말로 답변하고 문장의 끝마다 "쯧!"을 붙이세요'),
+        ('human', '{question}')
+    ]
+)
+
+model = ChatOpenAI(model="gpt-4o-mini", api_key=api_key)
+
+# chain
+chatbot = template | model
+
+res = chatbot.invoke({'question': '공릉에서 인덕원 역으로 가려면 어떻게 해야하나요?'})
+print(res)
+
+# 별도의 설정 불필요
+for part in chatbot.stream({'question': '공릉에서 인덕원 역으로 가려면 어떻게 해야하나요?'}):
+    print(part)
+
+# 공릉에서 인덕원 역 가려면 그냥 지하철 타면 돼 쯧! 1호선 타고 가서 환승하면 돼 쯧! 그렇게 가면 빨리 도착할 거야 쯧!
+```
+
 </div>
 </details>
