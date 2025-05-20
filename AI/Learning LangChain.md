@@ -348,5 +348,164 @@ loader = WebBaseLoader("https://www.naver.com/")
 print(loader.load())
 ```
 
+### 텍스트를 분할하기
+
+- 문서를 작은 단위로 분할하여 처리
+- 청크 사이의 관련성을 유지하기 위해 chunk_overlap을 사용
+- 코드의 경우 중복 불필요
+
+```python
+from langchain.text_splitter import RecursiveCharacterTextSplitter, Language
+from langchain.document_loaders import TextLoader
+
+loader = TextLoader("./myText.txt", encoding='utf-8')
+docs = loader.load()
+
+splitter = RecursiveCharacterTextSplitter(
+    chunk_size=1000,
+    chunk_overlap=200,
+)
+
+chunks = splitter.split_documents(docs)
+print(chunks)
+
+```
+
+### 임베딩 생성
+
+```python
+from langchain.embeddings import OpenAIEmbeddings
+
+embeddings = OpenAIEmbeddings()
+
+print(embeddings.embed_query("Hello world"))
+print(embeddings.embed_documents(["Hello world", "Hello world 2"]))
+
+```
+
+### 데이터베이스에 저장
+
+```bash
+# PGVector docker 실행
+docker run -d --name postgres -p 5432:5432 -e POSTGRES_PASSWORD=postgres -e POSTGRES_USER=postgres -e POSTGRES_DB=postgres pgvector/pgvector:pg16
+```
+
+```python
+from langchain_community.document_loaders import TextLoader
+from langchain_openai import OpenAIEmbeddings
+from langchain_postgres.vectorstores import PGVector
+from langchain.text_splitter import RecursiveCharacterTextSplitter
+
+connection = "postgresql+psycopg://postgres:postgres@localhost:5432/postgres"
+
+# load document
+loader = TextLoader("./myText.txt", encoding='utf-8')
+docs = loader.load()
+
+# split document
+splitter = RecursiveCharacterTextSplitter(
+    chunk_size=1000,
+    chunk_overlap=200,
+)
+
+chunks = splitter.split_documents(docs)
+
+# create embedding
+embeddings = OpenAIEmbeddings()
+
+db = PGVector.from_documents(
+    documents=chunks,
+    embedding=embeddings,
+    collection_name="my_collection",
+    connection=connection,
+)
+
+# 문서 추가
+db.add_documents(
+	Document(page_content="Hello")
+)
+
+# 검색
+result = db.similarity_search("Hello")
+print(result)
+
+# 변경사항 추적
+from langchain.indexes import index
+
+doc = index(
+  docs,
+  recodr_manager,
+  vectorstore,
+  cleanup='incremental',
+  source_id_key='source_id',
+)
+```
+
+문서 로드 -> 텍스트 분할 -> 임베딩 생성 -> 데이터베이스에 저장
+
+- source_id_key를 이용해 문서의 변경사항을 추적한다.
+
+### 인덱싱 최적화
+
+- 데이터에 이미지, 표 등이 포함된 경우 검색 결과의 일관성이 떨어질 수 있다.
+- 성능 향상을 위한 최적화 전략
+
+1. MultiVectorRetriever
+
+- 요약한 내용을 임베딩으로 사용
+- 전체 문서를 문서 저장소에 저장, 임베딩에서 문서의 id를 참조
+- LLM에 전체 컨텍스트를 제공
+
+2. RAPTOR
+
+- RAG 시스템은 단일 문서에 존재하는 하위 수준의 질문과 여러 문서를 사용하는 상위 수준의 질문을 처리할 수 있도록 설계
+- 기존의 유사도(knn) 방식으로는 이러한 두 가지 경우를 처리할 수 없음
+- 트리 형태 검색을 위한 재귀적 추상 처리
+- 원본 문서를 임베딩 + 클러스터링
+- 클러스터를 요약
+- 요약된 문서들을 다시 임베딩 + 클러스터링
+- 루트 요약(1개의 최종 요약)을 생성
+- 원본문서와 요약된 내용들을 종합해 질문에 답변
+
+```
+       [Root 요약]
+         /    \
+     [중간 요약] ...
+      /     \
+[청크1] [청크2] ...
+
+```
+
+3. ColBERT
+
+- 임베딩은 텍스트 전체가 고정된 크기의 벡터로 표현
+- 의미는 담을 수 있으나 세부적인 문맥이나 구조 정보 손실
+- ColBERT는 문서 질의의 각 토큰에 대한 컨텍스트 임베딩을 생성
+- 각 쿼리 토큰과 문서 내 모든 토큰의 유사도 산출, 평가
+- 모든 질의 임베딩과 해당 문서 임베딩 간의 유사도 중 최댓값 추출
+- 이를 합산해 각 문서의 점수 산정
+
+```
+🔍 쿼리: ["고양이", "먹이"]
+📄 문서1: ["고양이는", "생선을", "좋아한다"]
+📄 문서2: ["강아지는", "사료를", "먹는다"]
+
+→ "고양이"는 문서1에서 "고양이는"과 유사
+→ "먹이"는 문서1에서 "생선"과 유사
+
+→ 문서1은 쿼리와 잘 매칭됨 → 높은 점수
+
+→ 문서2는 두 단어 모두 관련 없음 → 낮은 점수
+```
+
 </div>
 </details>
+
+<!-- ## RAG -->
+
+<!-- <details> -->
+<!-- <summary>Contents</summary> -->
+<!-- <div markdown="1"> -->
+
+<!-- </div> -->
+<!-- </details> -->
