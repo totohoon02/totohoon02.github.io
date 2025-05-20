@@ -104,7 +104,7 @@
 ### Requirements
 
 ```bash
-pip install langchain-openai langchain-community langchain-text-spliters langchain-postgres python-dotenv
+pip install langchain-openai langchain-community langchain-text-splitters langchain-postgres python-dotenv
 ```
 
 ### Example
@@ -279,6 +279,73 @@ for part in chatbot.stream({'question': '공릉에서 인덕원 역으로 가려
     print(part)
 
 # 공릉에서 인덕원 역 가려면 그냥 지하철 타면 돼 쯧! 1호선 타고 가서 환승하면 돼 쯧! 그렇게 가면 빨리 도착할 거야 쯧!
+```
+
+</div>
+</details>
+
+## 02. RAG 1단계: 데이터 인덱싱
+
+<details>
+<summary>Contents</summary>
+<div markdown="1">
+
+#### RAG
+
+- LLM 모델이 학습하지 않은 지식을 활용
+- 적절한 컨텍스트 설정
+
+  - 인덱싱: 문서의 전처리
+  - 검색: 외부 데이터를 가져와 컨텍스트로 전달
+
+### 문서의 전처리 과정
+
+1. 문서에서 텍스트 추출
+2. 효율적 처리가 가능하게 적절한 단위로 분할
+3. 컴퓨터가 이해 할 수 있는 숫자 체계로 변환
+4. 적절한 위치에 저장
+
+데이터를 숫자(임베딩)로 변환하고 데이터 베이스(벡터 저장소)에 저장하는 것을 **인제스천**이라고 한다.
+
+### LLM 이전의 임베딩
+
+- BoW : 각 단어에 인덱스를 부여, 희소 벡터를 구성
+- It's sunndy day -> [0, 0, 0 1, 1, 1]
+- 키워드 검색, 문서 분류에 유용
+- 의미론적 분석이 불가능 suuny day, bright sky
+
+### LLM 기반 임베딩
+
+- 학습을 통한 벡터 생성, 밀집 벡터
+- 의미론적 분석이 가능
+- 고차원 상의 상대적 거리로 단어 간 의미론적 유사한 정도를 분석할 수 있다.
+
+### 문서 - 텍스트 변환
+
+```python
+import os
+from dotenv import load_dotenv
+from langchain_community.document_loaders import TextLoader
+
+load_dotenv()
+api_key = os.getenv("API_KEY")
+
+loader = TextLoader("./myText.txt", encoding='utf-8')
+docs = loader.load()
+print(docs)
+```
+
+### Web-base, PDF loader
+
+```bash
+pip install beautifulsoup4
+```
+
+```python
+from langchain_community.document_loaders import WebBaseLoader, PyPDFLoader
+
+loader = WebBaseLoader("https://www.naver.com/")
+print(loader.load())
 ```
 
 </div>
