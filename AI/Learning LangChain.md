@@ -503,7 +503,7 @@ doc = index(
 
 ## 03. RAG 2단계: 데이터 기반 대화
 
-<details open>
+<details>
 <summary>Contents</summary>
 <div markdown="1">
 
@@ -531,13 +531,198 @@ doc = index(
 - 각 쿼리에 대해서 병렬 실행
 - 생성된 컨텍스트들을 활용해 최종 답변 생성
 
-#### RAG 융합
+### RAG 융합
+
+#### 상호 순위 융합(RRF)
 
 - 검색된 문서에 대해 최종 재정렬 단계를 추가
 - 상호 순위 융합(RRF, Reporical rank fusion)를 통해 문서의 순위를 재정렬
+- 서로 다른 검색 결과의 순위를 통합해 하나의 순위를 생성
+
+```python
+def easy_rrf(result_lists, k=60):
+    scores = {}     # 각 문서의 총 점수를 저장할 딕셔너리
+
+    for result in result_lists:          # 각 시스템의 결과 리스트
+        for rank, doc in enumerate(result):
+            if doc not in scores:
+                scores[doc] = 0
+            scores[doc] += 1 / (rank + k)
+
+    # 점수가 높은 순으로 정렬
+    sorted_docs = sorted(scores.items(), key=lambda x: x[1], reverse=True)
+
+    # 문서 이름만 리스트로 반환
+    return [doc for doc, _ in sorted_docs]
+
+retrieval_chain = query_gen | retriever.batch | easy_rrf
+```
+
+여러 검색 시스템이 있고 같은 질문에 대해 각기 다른 결과를 생성한다고 가정한다. 예를 들어
+
+> “한국의 수도는?”
+
+시스템 A 결과:
+
+- 서울
+- 부산
+- 인천
+
+시스템 B 결과:
+
+- 부산
+- 서울
+- 대구
+
+시스템 C 결과:
+
+- 서울
+- 대전
+- 부산
+
+> 어떤 답이 가장 공통적으로 좋다고 판단했는지를 반영한 최종 리스트를 생성
+
+서울의 점수
+
+- 시스템 A에서 1등 → 점수 = 1 / (1 + 60) = 1 / 61
+- 시스템 B에서 2등 → 점수 = 1 / (2 + 60) = 1 / 62
+- 시스템 C에서 1등 → 점수 = 1 / (1 + 60) = 1 / 61
+- 1/61 + 1/62 + 1/61 ≈ 0.0164 + 0.0161 + 0.0164 = 약 0.0489
+
+> 상위권에 자주 등장하는 문서가 더 높은 점수를 받게 된다.<br> **공통적으로 좋다**
+
+#### 가상 문서 임베딩
+
+- 사용자의 쿼리를 토대로 가상의 문서 작성, 임베딩
+- 가상의 문서가 원래의 쿼리보다 찾으려는 문서와 관련성이 더 높을 것이라고 가정
+
+### 쿼리 라우팅
+
+- 쿼리를 적절한 데이터소스로 전달하는 방법
+
+#### 논리적 라우팅
+
+- 사용자의 표현된 키워드나 패턴 등 표면적 정보를 기반으로 분기
+- "2+2는 얼마야?" -> 숫자, + ->수학 데이터소스로 전달
+
+```python
+def logic_route(question: str):
+    if "더하기" in question or "+" in question:
+        return "math"
+    elif "광합성" in question:
+        return "science"
+    elif "조선" in question:
+        return "history"
+    else:
+        return "default"
+
+```
+
+#### 의미론적 라우팅
+
+- 질문의 의미를 LLM이 해석, 라우팅
+- "물이 끓는 온도는?" -> 끓는다, 온도 -> 과학 개념
+
+```python
+class RouteQuery(BaseModel):
+    datasource: Literal["math", "science", "history"]
+
+# system prompt 예시
+system_prompt = """
+당신은 질문을 분석해서 어떤 데이터소스가 가장 적절한지 판단합니다.
+가능한 선택지는 다음과 같습니다: math, science, history.
+"""
+
+# prompt + LLM = 의미 해석 기반 라우팅
+router_chain = ChatPromptTemplate.from_messages([
+    ("system", system_prompt),
+    ("human", "{question}")
+]) | ChatOpenAI(...).with_structured_output(RouteQuery)
+
+```
+
+### 쿼리 구성
+
+- 임베딩된 비정형 데이터에 대한 정보를 담은 정형 메타데이터를 포함
+
+#### 텍스트-메타데이터 필터
+
+```python
+# 메타데이터 속성 정보 정의
+metadata_field_info = [
+    AttributeInfo(
+        name="title",
+        description="The title of the movie",
+        type="string"
+    ),
+    AttributeInfo(
+        name="rating",
+        description="The rating of the movie (0-10)",
+        type="float"
+    ),
+]
+
+# SelfQueryRetriever 생성
+retriever = SelfQueryRetriever.from_llm(
+    llm=OpenAI(temperature=0),
+    vectorstore=vectorstore,
+    document_content_description="A movie review",
+    metadata_field_info=metadata_field_info,
+    enable_limit=True,
+)
+
+# 쿼리 예시: "평점이 8.0 이상인 스릴러 영화 찾아줘"
+results = retriever.invoke("평점이 8.0 이상인 스릴러 영화 찾아줘")
+
+for doc in results:
+    print(doc.page_content, doc.metadata)
+```
+
+#### 텍스트-SQL 변환
+
+- 데이터베이스 설명
+- 퓨샷 예시
+
+```python
+from langchain.tools.sql_database.tool import QuerySQLDatabaseTool
+from langchain.sql_database import SQLDatabase
+from langchain.llms import OpenAI
+
+# SQLite 데이터베이스 연결
+db = SQLDatabase.from_uri("sqlite:///movies.db")
+
+# LLM 준비
+llm = OpenAI(temperature=0)
+
+# 질문을 sql로 변환
+write_query = create_sql_query_chain(llm, db)
+
+# QuerySQLDatabaseTool 생성(쿼리 실행)
+execute_query = QuerySQLDatabaseTool(llm=llm)
+
+# 자연어로 쿼리 실행
+query = "평점이 8.0 이상인 스릴러 영화의 제목과 평점을 알려줘"
+
+combined_chain = write_query | execute_query
+
+result = combined_chain.invoke(query)
+
+print(result)
+```
 
 </div>
-  </details>
+</details>
+
+## 04. 랭그래프를 활용한 메모리 기능
+
+<details open>
+<summary>Contents</summary>
+<div markdown="1">
+
+> Hello!
+
+</div>
+</details>
 
 <!-- ## RAG -->
 
