@@ -93,3 +93,27 @@
   - 모델 업데이트
 - 모델 트래킹
 - 레지스트리
+
+### MLFlow Install
+
+#### 깃허브 토큰 생성
+
+- Settings -> Developer Settings -> Personal Access Tokens -> Generate new token
+- 이미지를 받으려면 토큰 생성 후 로그인 필요
+
+```bash
+export CR_PAT="Your token..."
+
+export CR_PAT=$CR_PAT
+echo $CR_PAT | docker login ghcr.io -u totohoon02 --password-stdin
+
+docker pull ghcr.io/mlflow/mlflow:v2.20.2
+```
+
+#### 실행
+
+- 컨테이너에 접속
+
+```bash
+python tutorial.py # mlflow WebUI에서 실행 결과 확인
+```
