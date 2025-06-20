@@ -66,3 +66,8 @@
 
 - 블로그 글을 parent-child 모델로 분할된 문서의 순서와 전체 문서 ID를 부여 <--
 - 청크 간의 오버랩을 통해 유사성 유지 가능
+
+### Load Balancing 서비스 비교
+
+- Nginx를 기준으로 서버의 가용성을 확인, 부하를 분산 <--
+- ELB(Elastic Load Balancer)에 대한 질문
