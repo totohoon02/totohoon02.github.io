@@ -1,5 +1,5 @@
 ## 그래프
-![graph](https://github.com/totohoon02/totohoon02.github.io/blob/main/_images/weighted_graph.png)
+![graph](https://raw.githubusercontent.com/totohoon02/totohoon02.github.io/main/_images/weighted_graph.png)
 
 #### 거리 테이블
 
