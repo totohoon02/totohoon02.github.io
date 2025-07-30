@@ -22,3 +22,50 @@
     3. **Observation (관찰)**: 행동의 결과를 분석.
     4. **Logs (기록)**: 전체 수행 과정의 로그를 저장.
     5. **Loop (반복)**: 목표를 달성할 때까지 위 과정을 반복.
+
+### 예시 코드
+```python
+from langchain.agents import initialize_agent, Tool
+from langchain.agents.agent_types import AgentType
+from langchain_openai import ChatOpenAI
+from langchain_community.tools import DuckDuckGoSearchRun
+
+# 1. LLM 구성
+llm = ChatOpenAI(model="gpt-4", temperature=0)
+
+# 2. Tool 정의 (DuckDuckGo 웹 검색)
+search_tool = DuckDuckGoSearchRun()
+
+tools = [
+    Tool(
+        name="Web Search",
+        func=search_tool.run,
+        description="실시간 정보를 찾을 수 있는 검색 도구"
+    )
+]
+
+# 3. Agent 초기화 (ReAct 기반)
+agent = initialize_agent(
+    tools,
+    llm,
+    agent=AgentType.ZERO_SHOT_REACT_DESCRIPTION,
+    verbose=True  # 콘솔에 로그 출력
+)
+
+# 4. 프롬프트로 에이전트 실행
+prompt = "서울의 오늘 날씨를 검색하고, 평균 기온이 20도 이하이면 '겉옷 챙기세요!'라고 말해줘."
+
+response = agent.run(prompt)
+
+print("\n📌 결과:", response)
+```
+```
+> Entering new AgentExecutor chain...
+Thought: 서울의 날씨를 알아야 한다.
+Action: Web Search
+Action Input: 서울의 오늘 날씨
+Observation: 오늘 서울은 흐림, 최고기온 19도, 최저기온 14도입니다.
+Thought: 평균 기온은 약 16.5도로 20도 이하이다.
+Final Answer: 겉옷 챙기세요!
+```
+
