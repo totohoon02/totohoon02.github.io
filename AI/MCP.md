@@ -1,85 +1,58 @@
-## MCP (Model Context Protocol)
+# MCP (Model Context Protocol)
 
-- MCP(Model Context Protocol)는 AI 모델이 외부 도구와 상호작용하며 보다 정교한 작업을 수행할 수 있도록 지원하는 프로토콜입니다.
-- 이는 특정 프레임워크에 종속되지 않고 독립적으로 동작할 수 있도록 설계되었습니다.
+- 모델이 외부 기능과 구조적으로 상호작용 하기 위한 표준 프로토콜
+- LLM 모델이 직접 코드 실행, DB 조회, API 호출할 수 있게 허용
 
-### 주요 특징
+## 역할
 
-- **Tool 역할을 담당**
-  - LLM이 다양한 외부 도구를 호출하고 활용할 수 있도록 함.
-- **Cursor AI 및 Claude Desktop과 호환**
-  - Cursor AI, Claude Desktop 등 다양한 AI 애플리케이션에서 활용 가능.
-- **프로토콜 및 프레임워크 독립적**
-  - 특정 플랫폼(LangChain, LangGraph 등)에 종속되지 않으며, 유연하게 확장 가능.
+- Host
+  - LLM이 실행되는 환경
+  - Cursor, VSCode
+  - Client를 포함하거나 연결
+  - 입출력, MCP 호출을 오케스트레이션
+- Client
+  - Host 내부에서 Server와 통신하는 중간자
+  - LLM의 도구 호출을 표준 MCP 요청 포맷으로 변환
+  - 응답을 받아 LLM이 이해할 수 있도록 변환
+- Server
+  - MCP 표준을 구현한 기능 제공자
 
----
+```
+[User]
+   ↓
+[LLM in Host] ←──> [MCP Client] ←──> [MCP Server #1] (예: DB 조회)
+                        │
+                        └──> [MCP Server #2] (예: API 호출)
+```
 
-## How to use?
+## 동작 원리
 
-### Claude + smithery
+- JSON-RPC/HTTP
 
-- Claude 데스크탑 설치
-- 설정파일에 mcp 서버 추가
-  `C:\Users\User\AppData\Roaming\Claude\claude_desktop_config.json`
-- Node 설치
-  - 윈도우 - 파워쉘 - 관리자모드 실행
-    `Set-ExecutionPolicy Unrestricted -Scope CurrentUser`
-  - npx가 실행되면 준비완료
-
-```bash
+```python
 {
-	"mcpServers": {
-		"todoist-mcp-server": {
-			"command": "cmd",
-			"args": [
-				"/c",
-				"npx",
-				"-y",
-				"@smithery/cli@latest",
-				"run",
-				"@abhiz123/todoist-mcp-server",
-				"--config",
-				"{\"todoistApiToken\":\"토큰토큰\"}"
-			]
-		}
-	}
+  "jsonrpc": "2.0",
+  "id": "123",
+  "method": "callTool",
+  "params": {
+    "name": "get_weather",
+    "arguments": { "city": "Seoul" }
+  }
 }
-
 ```
 
-### Resource
-
-- 필요한 정보와 컨텍스트 제공
-
-```python
-@mcp.resource("greeting://{name}")
-def get_greeting(name: str) -> str:
-    """Get a personalized greeting"""
-    return f"Hello, {name}!"
-```
-
-### Tools
-
-- 작업 수행
-
-```python
-@mcp.tool()
-def add(a: int, b: int) -> int:
-    """Add two numbers"""
-    return a + b
-```
-
-### Prompt
-
-- 일관된 응답 생성
-
-```python
-@mcp.prompt()
-def review_code(code: str) -> str:
-	return f"Please revicew this code \n\n {code}"
-```
-
-[REFERENCE]
-
-- [MCP(Model Context Protocol)이 뭐길래? 실습편](https://dytis.tistory.com/113)
-- [MCP란 무엇인가? — AI의 새로운 문법](https://datasciencebeehive.tistory.com/264)
+1. 연결
+   - Client가 Server와의 세션 생성
+   - Server에서 Tool 목록과 Schema를 Client에 전달
+   - 해당 정보를 LLM에 등록
+2. 요청
+   - LLM이 대화 중 `get_weather`라는 Tool 호출 필요 판단
+   - Client가 `JSON-RPC`형식으로 호출 파라미터 생성
+   - Server로 JSON 전달
+3. 처리
+   - Server는 Tool 실행
+   - 결과를 JSON Schema 형식으로 직렬화
+4. 응답
+   - Client로 응답 전송
+   - Client가 LLM이 이해할 수 있는 형식으로 전달
+   - LLM은 응답을 반영해 사용자에 보여줌
