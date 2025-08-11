@@ -1,6 +1,9 @@
 
 # MCP와 AI Agent 차이
 
+<img src="https://raw.githubusercontent.com/totohoon02/totohoon02.github.io/main/_images/agent_diagram.png" width="600" height="450">
+
+
 ## 📌 MCP(Model Context Protocol)
 - **정의**  
   LLM이 **외부 기능(도구, 데이터, API, 실행 환경)** 과 안전하고 표준화된 방식으로 상호작용하도록 하는 **프로토콜**.
