@@ -6,6 +6,27 @@
 - 내부 호출 시에 트랜잭션이 적용되지 않음
   - 객체를 직접 호출
 
+### 트랜잭션 처리 과정
+
+1. 메서드 호출
+   - `@Transactional`이 붙은 메서드를 호출
+   - 프록시 객체 생성, `TransactionInterceptor`를 통해 트랜잭션 로직 실행
+2. 트랜잭션 매니저가 트랜잭션을 시작
+   - `PlatformTransactionManager`가 커넥션 획득
+   - `AutoCommint=False`
+   - 물리 트랜잭션 시작
+3. 비지니스 로직 실행
+   - 실제 코드를 실행
+   - 예외 발생 시
+     - `RuntimeException` / `Error` → 스프링이 `rollback-only`로 마킹
+     - `Checked Exception` → 기본적으로 커밋 (옵션으로 롤백 가능)
+4. 정상/예외 처리에 따른 커밋 또는 롤백
+   - 메서드의 실행이 끝나면 프록시 객체는 트랜잭션 매니저에 실행 결과를 보고
+   - rollback-only가 true → 롤백
+   - 아니면 → 커밋
+   - `commit()` 또는 `rollback()` 호출
+5. 자원 반환
+
 ```java
 class CallService{
 	void external(){
